@@ -7,6 +7,7 @@ import rl "vendor:raylib"
 Animation_Name :: enum {
 	Idle,
 	Run,
+	Fire,
 }
 
 Animation :: struct {
@@ -68,7 +69,7 @@ main :: proc() {
 
 	player_run := Animation {
 		texture      = rl.LoadTexture(
-			"./Tiny Swords (Free Pack)/Units/Black Units/Archer/Archer_Run.png",
+			"./assets/Tiny Swords (Free Pack)/Units/Black Units/Archer/Archer_Run.png",
 		),
 		num_frames   = 4,
 		frame_length = 0.1,
@@ -77,11 +78,17 @@ main :: proc() {
 
 	player_idle := Animation {
 		texture      = rl.LoadTexture(
-			"./Tiny Swords (Free Pack)/Units/Black Units/Archer/Archer_Idle.png",
+			"./assets/Tiny Swords (Free Pack)/Units/Black Units/Archer/Archer_Idle.png",
 		),
 		num_frames   = 6,
 		frame_length = 0.1,
 		name         = .Idle,
+	}
+
+	player_fire := Animation {
+		texture = rl.LoadTexture(
+			"./assets/Tiny Swords (Free Pack)/Units/Black Units/Archer/Archer_Shoot.png",
+		),
 	}
 
 	current_anim := player_idle
