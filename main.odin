@@ -27,7 +27,12 @@ update_animation :: proc(a: ^Animation) {
 		a.frame_timer = 0
 
 		if a.current_frame == a.num_frames {
-			a.current_frame = 0
+			// Fire animation doesn't loop, others do
+			if a.name != .Fire {
+				a.current_frame = 0
+			} else {
+				a.current_frame = a.num_frames - 1
+			}
 		}
 	}
 }
@@ -50,8 +55,8 @@ draw_animation :: proc(a: Animation, pos: rl.Vector2, flip: bool) {
 	dest := rl.Rectangle {
 		x      = pos.x,
 		y      = pos.y,
-		width  = width / f32(a.num_frames),
-		height = height,
+		width  = width * 0.6 / f32(a.num_frames),
+		height = height * 0.6,
 	}
 
 	rl.DrawTexturePro(a.texture, source, dest, 0, 0, rl.WHITE)
@@ -66,6 +71,9 @@ main :: proc() {
 	player_vel: rl.Vector2
 	player_speed: f32 = 250.0
 	player_flip: bool
+	is_firing: bool = false
+	previous_anim: Animation
+	fire_flip: bool
 
 	player_run := Animation {
 		texture      = rl.LoadTexture(
@@ -86,9 +94,12 @@ main :: proc() {
 	}
 
 	player_fire := Animation {
-		texture = rl.LoadTexture(
+		texture      = rl.LoadTexture(
 			"./assets/Tiny Swords (Free Pack)/Units/Black Units/Archer/Archer_Shoot.png",
 		),
+		num_frames   = 8,
+		frame_length = 0.1,
+		name         = .Fire,
 	}
 
 	current_anim := player_idle
@@ -101,39 +112,66 @@ main :: proc() {
 		rl.BeginDrawing()
 		rl.ClearBackground({110, 184, 168, 255})
 
-		player_vel = rl.Vector2{0, 0} // 매 프레임 초기화
-
-		if rl.IsKeyDown(.LEFT) || rl.IsKeyDown(.A) {
-			player_vel.x = -1
-			player_flip = true
-		}
-		if rl.IsKeyDown(.RIGHT) || rl.IsKeyDown(.D) {
-			player_vel.x = 1
-			player_flip = false
-		}
-		if rl.IsKeyDown(.UP) || rl.IsKeyDown(.W) {
-			player_vel.y = -1
-		}
-		if rl.IsKeyDown(.DOWN) || rl.IsKeyDown(.S) {
-			player_vel.y = 1
+		// Check for left-click to trigger fire animation
+		if rl.IsMouseButtonPressed(.LEFT) {
+			is_firing = true
+			previous_anim = current_anim
+			current_anim = player_fire
+			// Reset fire animation frame
+			current_anim.current_frame = 0
+			current_anim.frame_timer = 0
+			// Save current facing direction
+			fire_flip = player_flip
 		}
 
-		if player_vel.x != 0 || player_vel.y != 0 {
-			player_vel = la.normalize0(player_vel) * rl.GetFrameTime() * 400
+		// Only allow movement when not firing
+		if !is_firing {
+			player_vel = rl.Vector2{0, 0} // 매 프레임 초기화
 
-			if current_anim.name != .Run {
-				current_anim = player_run
+			if rl.IsKeyDown(.LEFT) || rl.IsKeyDown(.A) {
+				player_vel.x = -1
+				player_flip = true
+			}
+			if rl.IsKeyDown(.RIGHT) || rl.IsKeyDown(.D) {
+				player_vel.x = 1
+				player_flip = false
+			}
+			if rl.IsKeyDown(.UP) || rl.IsKeyDown(.W) {
+				player_vel.y = -1
+			}
+			if rl.IsKeyDown(.DOWN) || rl.IsKeyDown(.S) {
+				player_vel.y = 1
+			}
+
+			if player_vel.x != 0 || player_vel.y != 0 {
+				player_vel = la.normalize0(player_vel) * rl.GetFrameTime() * 400
+
+				if current_anim.name != .Run {
+					current_anim = player_run
+				}
+			} else {
+				if current_anim.name != .Idle {
+					current_anim = player_idle
+				}
 			}
 		} else {
-			if current_anim.name != .Idle {
-				current_anim = player_idle
+			// Stop movement while firing
+			player_vel = rl.Vector2{0, 0}
+
+			// Reset firing state after animation completes
+			if current_anim.current_frame >= current_anim.num_frames - 1 {
+				is_firing = false
+				current_anim = previous_anim
 			}
 		}
 
 		player_pos += player_vel
 
 		update_animation(&current_anim)
-		draw_animation(current_anim, player_pos, player_flip)
+
+		// Use saved direction during fire animation
+		draw_flip := is_firing ? fire_flip : player_flip
+		draw_animation(current_anim, player_pos, draw_flip)
 		rl.EndDrawing()
 	}
 
