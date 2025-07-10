@@ -77,30 +77,33 @@ draw_animation :: proc(a: Animation, pos: rl.Vector2, flip: bool) {
 }
 
 get_input :: proc() -> Input_State {
-	return Input_State{
-		move_left  = rl.IsKeyDown(.LEFT) || rl.IsKeyDown(.A),
+	return Input_State {
+		move_left = rl.IsKeyDown(.LEFT) || rl.IsKeyDown(.A),
 		move_right = rl.IsKeyDown(.RIGHT) || rl.IsKeyDown(.D),
-		move_up    = rl.IsKeyDown(.UP) || rl.IsKeyDown(.W),
-		move_down  = rl.IsKeyDown(.DOWN) || rl.IsKeyDown(.S),
-		fire       = rl.IsMouseButtonPressed(.LEFT),
+		move_up = rl.IsKeyDown(.UP) || rl.IsKeyDown(.W),
+		move_down = rl.IsKeyDown(.DOWN) || rl.IsKeyDown(.S),
+		fire = rl.IsMouseButtonPressed(.LEFT),
 	}
 }
 
-process_input :: proc(input: Input_State, player_pos: ^rl.Vector2, player_vel: ^rl.Vector2, player_flip: ^bool, player_speed: f32, state: Player_State) -> (rl.Vector2, bool) {
+process_input :: proc(
+	input: Input_State,
+	player_pos: ^rl.Vector2,
+	player_vel: ^rl.Vector2,
+	player_speed: f32,
+	state: Player_State,
+) -> rl.Vector2 {
 	if state == .Firing {
-		return rl.Vector2{0, 0}, player_flip^
+		return rl.Vector2{0, 0}
 	}
 
 	velocity := rl.Vector2{0, 0}
-	flip := player_flip^
 
 	if input.move_left {
 		velocity.x = -1
-		flip = true
 	}
 	if input.move_right {
 		velocity.x = 1
-		flip = false
 	}
 	if input.move_up {
 		velocity.y = -1
@@ -113,7 +116,7 @@ process_input :: proc(input: Input_State, player_pos: ^rl.Vector2, player_vel: ^
 		velocity = la.normalize0(velocity) * rl.GetFrameTime() * player_speed
 	}
 
-	return velocity, flip
+	return velocity
 }
 
 main :: proc() {
@@ -124,6 +127,7 @@ main :: proc() {
 	player_pos := rl.Vector2{640, 320}
 	player_vel: rl.Vector2
 	player_speed: f32 = 400.0
+	player_cursor: rl.Vector2
 	player_flip: bool
 	player_state: Player_State = .Idle
 	previous_anim: Animation
@@ -175,7 +179,14 @@ main :: proc() {
 		}
 
 		// Process movement
-		player_vel, player_flip = process_input(input, &player_pos, &player_vel, &player_flip, player_speed, player_state)
+		player_vel = process_input(input, &player_pos, &player_vel, player_speed, player_state)
+
+		player_cursor = rl.GetMousePosition()
+		if player_cursor.x < player_pos.x {
+			player_flip = true
+		} else {
+			player_flip = false
+		}
 
 		// Update animation based on state
 		switch player_state {
@@ -204,7 +215,28 @@ main :: proc() {
 			}
 		}
 
-		player_pos += player_vel
+		// Apply velocity with boundary checking
+		new_pos := player_pos + player_vel
+
+		// Get player sprite dimensions for boundary calculation
+		sprite_width := f32(current_anim.texture.width) * 0.4 / f32(current_anim.num_frames)
+		sprite_height := f32(current_anim.texture.height) * 0.4
+
+		// Check boundaries and clamp position
+		// if new_pos.x >= 0 && new_pos.x + sprite_width <= f32(rl.GetScreenWidth()) {
+		// 	player_pos.x = new_pos.x
+		// }
+		// if new_pos.y >= 0 && new_pos.y + sprite_height <= f32(rl.GetScreenHeight()) {
+		// 	player_pos.y = new_pos.y
+		// }
+		if new_pos.x >= 0 - (sprite_width / 2) &&
+		   new_pos.x + sprite_width <= f32(rl.GetScreenWidth()) {
+			player_pos.x = new_pos.x
+		}
+		if new_pos.y >= 0 - (sprite_height / 2) &&
+		   new_pos.y + sprite_height <= f32(rl.GetScreenHeight()) {
+			player_pos.y = new_pos.y
+		}
 
 		update_animation(&current_anim)
 
