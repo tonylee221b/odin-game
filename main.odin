@@ -181,13 +181,6 @@ main :: proc() {
 		// Process movement
 		player_vel = process_input(input, &player_pos, &player_vel, player_speed, player_state)
 
-		player_cursor = rl.GetMousePosition()
-		if player_cursor.x < player_pos.x {
-			player_flip = true
-		} else {
-			player_flip = false
-		}
-
 		// Update animation based on state
 		switch player_state {
 		case .Firing:
@@ -237,6 +230,14 @@ main :: proc() {
 		   new_pos.y + sprite_height <= f32(rl.GetScreenHeight()) {
 			player_pos.y = new_pos.y
 		}
+
+		player_cursor = rl.GetMousePosition()
+		if player_cursor.x < new_pos.x + (sprite_width / 2) {
+			player_flip = true
+		} else {
+			player_flip = false
+		}
+
 
 		update_animation(&current_anim)
 
